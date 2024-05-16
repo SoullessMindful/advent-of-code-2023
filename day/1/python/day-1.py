@@ -1,4 +1,5 @@
 import io
+from functools import reduce
 
 lines = io.open("../input", "r").readlines()
 
@@ -13,6 +14,6 @@ def processLine(line: str) -> int | None:
 
 processedLines = map(processLine, lines)
 filteredLines = filter(lambda i: i is not None, processedLines)
-answers = map(lambda i: str(i), filteredLines)
+sum = reduce(lambda x, y: x+y, filteredLines, 0)
 
-print("\n".join(answers))
+print(sum)
