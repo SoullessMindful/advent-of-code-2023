@@ -1,7 +1,6 @@
+import sys
 import io
 from functools import reduce
-
-lines = io.open("../input", "r").readlines()
 
 
 def processLine(line: str) -> int | None:
@@ -12,6 +11,7 @@ def processLine(line: str) -> int | None:
     return int(digits[0] + digits[-1])
 
 
+lines = io.open(sys.argv[1], "r").readlines()
 processedLines = map(processLine, lines)
 filteredLines = filter(lambda i: i is not None, processedLines)
 sum = reduce(lambda x, y: x+y, filteredLines, 0)
