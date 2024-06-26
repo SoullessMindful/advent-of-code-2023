@@ -5,5 +5,6 @@ puzzles done in a variety of programming languages, like:
 - Python
 - C
 - Scala
+- Rust
 
-So far Haskell and Scala have been the smoothest ones by far.
+Just testing and comparing different languages. So far Haskell and Scala have been the smoothest ones by far.
