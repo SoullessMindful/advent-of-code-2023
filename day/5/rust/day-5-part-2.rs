@@ -1,6 +1,7 @@
 use std::env::args;
 use std::fs::read_to_string;
 use std::iter::zip;
+use std::cmp::{min,max};
 
 fn main() {
     let clargs: Vec<String> = args().collect();
@@ -25,18 +26,20 @@ fn main() {
     let humidity_to_location = extract_rules(lines[7].clone());
 
     let locations: Vec<i64> = seeds.into_iter()
-        .map(|s| apply_rules(s, seed_to_soil.clone()))
-        .map(|s| apply_rules(s, soil_to_fertilizer.clone()))
-        .map(|s| apply_rules(s, fertilizer_to_water.clone()))
-        .map(|s| apply_rules(s, water_to_light.clone()))
-        .map(|s| apply_rules(s, light_to_temperature.clone()))
-        .map(|s| apply_rules(s, temperature_to_humidity.clone()))
-        .map(|s| apply_rules(s, humidity_to_location.clone())).collect::<Vec<i64>>();
+        .flat_map(|s| apply_rules(s, seed_to_soil.clone()))
+        .flat_map(|s| apply_rules(s, soil_to_fertilizer.clone()))
+        .flat_map(|s| apply_rules(s, fertilizer_to_water.clone()))
+        .flat_map(|s| apply_rules(s, water_to_light.clone()))
+        .flat_map(|s| apply_rules(s, light_to_temperature.clone()))
+        .flat_map(|s| apply_rules(s, temperature_to_humidity.clone()))
+        .flat_map(|s| apply_rules(s, humidity_to_location.clone()))
+        .map(|s| s.start)
+        .collect::<Vec<i64>>();
 
     println!("{:?}", locations.iter().min().unwrap());
 }
 
-fn extract_seeds_from_ranges(seed_ranges: Vec<i64>) -> Vec<i64> {
+fn extract_seeds_from_ranges(seed_ranges: Vec<i64>) -> Vec<SeedRange> {
     let seed_starts: Vec<i64> = seed_ranges.clone().into_iter()
         .enumerate()
         .filter(|&(i, _)| i % 2 == 0)
@@ -50,7 +53,10 @@ fn extract_seeds_from_ranges(seed_ranges: Vec<i64>) -> Vec<i64> {
         .collect();
 
     return zip(seed_starts, seed_range_lengths)
-        .flat_map(|(s, l)| (s..s+l).collect::<Vec<i64>>())
+        .map(|(s, l)| SeedRange {
+            start: s,
+            length: l,
+        })
         .collect();
 }
 
@@ -93,13 +99,69 @@ fn parse_rule(line: String) -> Rule {
     };
 }
 
-fn apply_rules(source: i64, rules: Vec<Rule>) -> i64 {
-    let rule = rules.into_iter()
-        .find(|r| r.source_start <= source && source < r.source_start + r.range);
+fn apply_rules(source: SeedRange, rules: Vec<Rule>) -> Vec<SeedRange> {
+    let mut results = vec![];
+    let mut mut_source = source;
 
-    match rule {
-        Some(r) => return r.target_start + (source - r.source_start),
-        None => return source,
+    while mut_source.length > 0 {
+        let (result, new_source) = apply_rules_rec(mut_source, rules.clone());
+
+        results.push(result);
+        mut_source = new_source;
+    }
+
+    return results;
+}
+
+fn apply_rules_rec(source: SeedRange, rules: Vec<Rule>) -> (SeedRange, SeedRange) {
+    match rules.iter().find(|&r| source.start >= r.source_start && source.start < r.source_start + r.range) {
+        Some(r) => {
+            let end = min(r.source_start + r.range, source.start + source.length);
+            let length = end - source.start;
+            let result_start = source.start - r.source_start + r.target_start;
+
+            return (
+                SeedRange {
+                    start: result_start,
+                    length: length,
+                },
+                SeedRange {
+                    start: end,
+                    length: source.length - end + source.start,
+                },
+            )
+        }
+        None => {
+            match rules.iter().filter(|&r| r.source_start > source.start).min_by_key(|r| r.source_start) {
+                Some (r) => {
+                    let end = min(r.source_start, source.start + source.length);
+                    let length = end - source.start;
+
+                    return (
+                        SeedRange {
+                            start: source.start,
+                            length: length,
+                        },
+                        SeedRange {
+                            start: end,
+                            length: source.length - end + source.start,
+                        },
+                    )
+                }
+                None => {
+                    return (
+                        SeedRange {
+                            start: source.start,
+                            length: source.length,
+                        },
+                        SeedRange {
+                            start: source.start + source.length,
+                            length: 0,
+                        },
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -108,4 +170,10 @@ struct Rule {
     source_start: i64,
     target_start: i64,
     range: i64,
+}
+
+#[derive(Clone)]
+struct SeedRange {
+    start: i64,
+    length: i64,
 }
