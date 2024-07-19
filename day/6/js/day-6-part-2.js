@@ -18,8 +18,10 @@ const distance = Number.parseInt(distStr
   .slice(1)
   .join(''))
 
-const firstWinningTime = range(1, time - 1)
-  .find((T) => T*(time-T) > distance)
+let firstWinningTime = 1
+while (firstWinningTime*(time - firstWinningTime) <= distance) {
+  firstWinningTime++
+}
 
 const lastWinningTime = time - firstWinningTime
 const result = lastWinningTime - firstWinningTime + 1
